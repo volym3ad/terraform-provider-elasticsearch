@@ -5,27 +5,39 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-var testAccProviders map[string]terraform.ResourceProvider
+var testAccProviders map[string]*schema.Provider
+var testAccProviderFactories func(providers *[]*schema.Provider) map[string]func() (*schema.Provider, error)
 var testAccProvider *schema.Provider
 
-var testAccXPackProviders map[string]terraform.ResourceProvider
+var testAccXPackProviders map[string]*schema.Provider
 var testAccXPackProvider *schema.Provider
 
-var testAccOpendistroProviders map[string]terraform.ResourceProvider
+var testAccOpendistroProviders map[string]*schema.Provider
 var testAccOpendistroProvider *schema.Provider
 
 func init() {
-	testAccProvider = Provider().(*schema.Provider)
-	testAccProviders = map[string]terraform.ResourceProvider{
+	testAccProvider = Provider()
+	testAccProviders = map[string]*schema.Provider{
 		"elasticsearch": testAccProvider,
 	}
+	testAccProviderFactories = func(providers *[]*schema.Provider) map[string]func() (*schema.Provider, error) {
+		// this is an SDKV2 compatible hack, the "factory" functions are
+		// effectively singletons for the lifecycle of a resource.Test
+		var factories = make(map[string]func() (*schema.Provider, error), len(testAccProviders))
+		for name, p := range testAccProviders {
+			factories[name] = func() (*schema.Provider, error) {
+				return p, nil
+			}
+			*providers = append(*providers, p)
+		}
+		return factories
+	}
 
-	testAccXPackProvider = Provider().(*schema.Provider)
-	testAccXPackProviders = map[string]terraform.ResourceProvider{
+	testAccXPackProvider = Provider()
+	testAccXPackProviders = map[string]*schema.Provider{
 		"elasticsearch": testAccXPackProvider,
 	}
 
@@ -38,8 +50,8 @@ func init() {
 		return xPackOriginalConfigureFunc(d)
 	}
 
-	testAccOpendistroProvider = Provider().(*schema.Provider)
-	testAccOpendistroProviders = map[string]terraform.ResourceProvider{
+	testAccOpendistroProvider = Provider()
+	testAccOpendistroProviders = map[string]*schema.Provider{
 		"elasticsearch": testAccOpendistroProvider,
 	}
 
@@ -54,13 +66,13 @@ func init() {
 }
 
 func TestProvider(t *testing.T) {
-	if err := Provider().(*schema.Provider).InternalValidate(); err != nil {
+	if err := Provider().InternalValidate(); err != nil {
 		t.Fatalf("err: %s", err)
 	}
 }
 
 func TestProvider_impl(t *testing.T) {
-	var _ terraform.ResourceProvider = Provider()
+	var _ = Provider()
 }
 
 func testAccPreCheck(t *testing.T) {
@@ -188,7 +200,7 @@ func TestAWSCredsAssumeRole(t *testing.T) {
 		"aws_assume_role_arn": "test_arn",
 	}
 
-	testConfigData := schema.TestResourceDataRaw(t, Provider().(*schema.Provider).Schema, testConfig)
+	testConfigData := schema.TestResourceDataRaw(t, Provider().Schema, testConfig)
 
 	conf := &ProviderConf{
 		awsAssumeRoleArn: testConfigData.Get("aws_assume_role_arn").(string),
@@ -219,6 +231,8 @@ func getCreds(t *testing.T, region string, config map[string]interface{}) creden
 		awsProfile:         awsProfile,
 	}
 	s := awsSession(region, conf)
+	// testConfigData := schema.TestResourceDataRaw(t, Provider().Schema, config)
+	// s := awsSession(region, testConfigData)
 	if s == nil {
 		t.Fatalf("awsSession returned nil")
 	}

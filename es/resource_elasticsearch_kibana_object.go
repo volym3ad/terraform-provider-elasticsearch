@@ -6,11 +6,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/structure"
-
-	// "github.com/hashicorp/terraform-plugin-sdk/helper/validation"
-
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/structure"
 	elastic7 "github.com/olivere/elastic/v7"
 	elastic5 "gopkg.in/olivere/elastic.v5"
 	elastic6 "gopkg.in/olivere/elastic.v6"
@@ -26,7 +23,6 @@ func resourceElasticsearchKibanaObject() *schema.Resource {
 			"body": {
 				Type:     schema.TypeString,
 				Required: true,
-				// ValidateFunc: validation.StringIsJSON,
 				ValidateFunc: func(i interface{}, k string) (warnings []string, errors []error) {
 					v, ok := i.(string)
 					if !ok {
@@ -226,10 +222,11 @@ func resourceElasticsearchKibanaObjectRead(d *schema.ResourceData, meta interfac
 
 		return err
 	}
+	log.Printf("[TRACE] body: %s", string(*result))
 
 	ds := &resourceDataSetter{d: d}
 	ds.set("index", index)
-	d.Set("body", result)
+	ds.set("body", string(*result))
 
 	return ds.err
 }

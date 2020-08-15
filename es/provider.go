@@ -17,9 +17,7 @@ import (
 	awssigv4 "github.com/aws/aws-sdk-go/aws/signer/v4"
 	awssts "github.com/aws/aws-sdk-go/service/sts"
 	"github.com/deoxxa/aws_signing_client"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/pathorcontents"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	elastic7 "github.com/olivere/elastic/v7"
 	elastic5 "gopkg.in/olivere/elastic.v5"
 	elastic6 "gopkg.in/olivere/elastic.v6"
@@ -48,7 +46,7 @@ type ProviderConf struct {
 	keyPemPath         string
 }
 
-func Provider() terraform.ResourceProvider {
+func Provider() *schema.Provider {
 	return &schema.Provider{
 		Schema: map[string]*schema.Schema{
 			"url": {
@@ -394,11 +392,11 @@ func tlsHttpClient(conf *ProviderConf) *http.Client {
 	// Configure TLS/SSL
 	tlsConfig := &tls.Config{}
 	if conf.certPemPath != "" && conf.keyPemPath != "" {
-		certPem, _, err := pathorcontents.Read(conf.certPemPath)
+		certPem, _, err := readPathOrContent(conf.certPemPath)
 		if err != nil {
 			log.Fatal(err)
 		}
-		keyPem, _, err := pathorcontents.Read(conf.keyPemPath)
+		keyPem, _, err := readPathOrContent(conf.keyPemPath)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -411,7 +409,7 @@ func tlsHttpClient(conf *ProviderConf) *http.Client {
 
 	// If a cacertFile has been specified, use that for cert validation
 	if conf.cacertFile != "" {
-		caCert, _, _ := pathorcontents.Read(conf.cacertFile)
+		caCert, _, _ := readPathOrContent(conf.cacertFile)
 
 		caCertPool := x509.NewCertPool()
 		caCertPool.AppendCertsFromPEM([]byte(caCert))
