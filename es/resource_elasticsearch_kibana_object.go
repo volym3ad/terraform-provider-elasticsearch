@@ -229,7 +229,7 @@ func resourceElasticsearchKibanaObjectRead(d *schema.ResourceData, meta interfac
 
 	ds := &resourceDataSetter{d: d}
 	ds.set("index", index)
-	d.Set("body", result)
+	ds.set("body", string(*result))
 
 	return ds.err
 }
